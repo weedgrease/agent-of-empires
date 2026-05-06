@@ -93,6 +93,8 @@ pub struct NewSessionData {
     /// Path to a Dockerfile when the dialog is in dockerfile mode (Some) — the
     /// sandbox image will be built from it instead of pulled. None means image mode.
     pub sandbox_dockerfile: Option<String>,
+    /// Force a fresh pull/rebuild on every container start.
+    pub sandbox_pull_latest: bool,
     pub yolo_mode: bool,
     /// Additional environment entries for the container.
     /// `KEY` = pass through from host, `KEY=VALUE` = set explicitly.
@@ -121,6 +123,9 @@ pub struct NewSessionDialog {
     /// dockerfile path. When `None`, it's in image mode (edit `sandbox_image`).
     /// 't' on the modal's image field toggles between the two.
     pub(super) sandbox_dockerfile: Option<Input>,
+    /// Force a fresh pull/rebuild on every container start. Toggle on the
+    /// "Pull Latest" field of the sandbox config modal.
+    pub(super) sandbox_pull_latest: bool,
     pub(super) docker_available: bool,
     pub(super) yolo_mode: bool,
     pub(super) yolo_mode_default: bool,
@@ -401,6 +406,7 @@ impl NewSessionDialog {
             sandbox_enabled,
             sandbox_image: Input::new(default_sandbox_image_value),
             sandbox_dockerfile: initial_sandbox_dockerfile,
+            sandbox_pull_latest: false,
             docker_available,
             yolo_mode,
             yolo_mode_default: yolo_mode,
@@ -645,6 +651,7 @@ impl NewSessionDialog {
             sandbox_enabled: false,
             sandbox_image: Input::new(image_default),
             sandbox_dockerfile: config.sandbox.dockerfile.clone().map(Input::new),
+            sandbox_pull_latest: false,
             docker_available: false,
             yolo_mode: false,
             yolo_mode_default: false,
@@ -705,6 +712,7 @@ impl NewSessionDialog {
                 containers::get_container_runtime().effective_default_image(None),
             ),
             sandbox_dockerfile: None,
+            sandbox_pull_latest: false,
             docker_available: false,
             yolo_mode: false,
             yolo_mode_default: false,
@@ -1039,10 +1047,12 @@ impl NewSessionDialog {
 
     /// Handle key events when in sandbox configuration mode.
     fn handle_sandbox_config_key(&mut self, key: KeyEvent) -> DialogResult<NewSessionData> {
-        // Sandbox config fields: 0=image, 1=env (inherited is always-visible, not focusable)
+        // Sandbox config fields: 0=image, 1=env, 2=pull-latest
+        // (inherited is always-visible, not focusable)
         const SANDBOX_IMAGE: usize = 0;
         const SANDBOX_ENV: usize = 1;
-        const SANDBOX_MAX: usize = 2;
+        const SANDBOX_PULL_LATEST: usize = 2;
+        const SANDBOX_MAX: usize = 3;
 
         // Handle env list editing when expanded
         if self.env_list_expanded && self.sandbox_focused_field == SANDBOX_ENV {
@@ -1061,6 +1071,10 @@ impl NewSessionDialog {
             KeyCode::Enter if self.sandbox_focused_field == SANDBOX_ENV => {
                 self.env_list_expanded = true;
                 self.env_selected_index = 0;
+                DialogResult::Continue
+            }
+            KeyCode::Enter if self.sandbox_focused_field == SANDBOX_PULL_LATEST => {
+                self.sandbox_pull_latest = !self.sandbox_pull_latest;
                 DialogResult::Continue
             }
             KeyCode::Enter => {
@@ -1087,6 +1101,11 @@ impl NewSessionDialog {
                     self.sandbox_dockerfile =
                         Some(Input::new(".agent-of-empires/Dockerfile".to_string()));
                 }
+                DialogResult::Continue
+            }
+            // Space toggles the pull-latest bool when focused.
+            KeyCode::Char(' ') if self.sandbox_focused_field == SANDBOX_PULL_LATEST => {
+                self.sandbox_pull_latest = !self.sandbox_pull_latest;
                 DialogResult::Continue
             }
             _ => {
@@ -1491,6 +1510,7 @@ impl NewSessionDialog {
                 .as_ref()
                 .map(|i| i.value().trim().to_string())
                 .filter(|s| !s.is_empty()),
+            sandbox_pull_latest: self.sandbox_pull_latest,
             yolo_mode: self.yolo_mode || self.selected_tool_always_yolo(),
             extra_env: if self.sandbox_enabled {
                 self.extra_env.clone()

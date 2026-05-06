@@ -601,7 +601,7 @@ impl NewSessionDialog {
     fn render_sandbox_config(&self, frame: &mut Frame, area: Rect, theme: &Theme) {
         let dialog_width: u16 = 72;
 
-        // Sandbox config fields: image, env, inherited
+        // Sandbox config fields: image, env, pull-latest, inherited
         let env_list_height: u16 = if self.env_list_expanded {
             (2 + self.extra_env.len() as u16).clamp(4, 8)
         } else {
@@ -610,8 +610,9 @@ impl NewSessionDialog {
         let inherited_height: u16 = 2 + self.inherited_settings.len().max(1) as u16;
 
         let constraints = vec![
-            Constraint::Length(2),                // Image
+            Constraint::Length(2),                // Image / Dockerfile
             Constraint::Length(env_list_height),  // Environment
+            Constraint::Length(2),                // Pull Latest
             Constraint::Length(inherited_height), // Inherited settings
             Constraint::Min(1),                   // Hints
         ];
@@ -678,6 +679,33 @@ impl NewSessionDialog {
         self.render_env_field(frame, chunks[ci], self.sandbox_focused_field == 1, theme);
         ci += 1;
 
+        // Pull Latest (bool toggle). Forces a fresh pull (image mode) or
+        // `docker build --pull` (dockerfile mode) on every container start.
+        let pull_focused = self.sandbox_focused_field == 2;
+        let pull_label_style = if pull_focused {
+            Style::default().fg(theme.accent).bold()
+        } else {
+            Style::default().fg(theme.text)
+        };
+        let pull_value_text = if self.sandbox_pull_latest {
+            "[x] yes"
+        } else {
+            "[ ] no"
+        };
+        let pull_lines = vec![
+            Line::from(vec![
+                Span::styled("Pull Latest:", pull_label_style),
+                Span::raw("  "),
+                Span::styled(pull_value_text, Style::default().fg(theme.text)),
+            ]),
+            Line::from(Span::styled(
+                "  Re-pull / rebuild base image on each session start",
+                Style::default().fg(theme.dimmed),
+            )),
+        ];
+        frame.render_widget(Paragraph::new(pull_lines), chunks[ci]);
+        ci += 1;
+
         // Inherited settings (always visible, not focusable)
         self.render_inherited_field(frame, chunks[ci], theme);
         ci += 1;
@@ -687,7 +715,7 @@ impl NewSessionDialog {
             Span::styled("Tab", Style::default().fg(theme.hint)),
             Span::raw(" next  "),
             Span::styled("Enter", Style::default().fg(theme.hint)),
-            Span::raw(" edit  "),
+            Span::raw(" edit/toggle  "),
             Span::styled("t", Style::default().fg(theme.hint)),
             Span::raw(" image/dockerfile  "),
             Span::styled("Esc", Style::default().fg(theme.hint)),

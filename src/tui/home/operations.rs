@@ -30,6 +30,7 @@ impl HomeView {
             sandbox: data.sandbox,
             sandbox_image: data.sandbox_image,
             sandbox_dockerfile: data.sandbox_dockerfile,
+            sandbox_pull_latest: data.sandbox_pull_latest,
             yolo_mode: data.yolo_mode,
             extra_env: data.extra_env,
             extra_args: data.extra_args,

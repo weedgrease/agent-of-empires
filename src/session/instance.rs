@@ -114,6 +114,11 @@ pub struct SandboxInfo {
     /// image is built and tagged as `image` on session start instead of pulled.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dockerfile: Option<String>,
+    /// Force a fresh pull/rebuild on every container start. In image mode the
+    /// image is re-pulled from its registry; in dockerfile mode `docker build`
+    /// is invoked with `--pull` so the FROM base is refreshed.
+    #[serde(default)]
+    pub pull_latest: bool,
 }
 
 /// Deserialize agent_session_id, treating empty/whitespace strings as None.
@@ -1109,6 +1114,7 @@ impl Instance {
             );
             resolved.sandbox.dockerfile
         });
+        let pull_latest = sandbox.pull_latest;
         if let Some(dockerfile_rel) = dockerfile_choice {
             let project_root = Path::new(&self.project_path);
             let dockerfile_path = if Path::new(&dockerfile_rel).is_absolute() {
@@ -1117,11 +1123,17 @@ impl Instance {
                 project_root.join(&dockerfile_rel)
             };
             match progress_tx {
-                Some(tx) => {
-                    runtime.build_image_streamed(&image, &dockerfile_path, project_root, tx)?
-                }
-                None => runtime.build_image(&image, &dockerfile_path, project_root)?,
+                Some(tx) => runtime.build_image_streamed(
+                    &image,
+                    &dockerfile_path,
+                    project_root,
+                    pull_latest,
+                    tx,
+                )?,
+                None => runtime.build_image(&image, &dockerfile_path, project_root, pull_latest)?,
             }
+        } else if pull_latest {
+            runtime.ensure_image_pull_latest(&image)?;
         } else {
             runtime.ensure_image(&image)?;
         }
@@ -2008,6 +2020,7 @@ mod tests {
             extra_env: None,
             custom_instruction: None,
             dockerfile: None,
+            pull_latest: false,
         });
         assert!(!inst.is_sandboxed());
     }
@@ -2023,6 +2036,7 @@ mod tests {
             extra_env: None,
             custom_instruction: None,
             dockerfile: None,
+            pull_latest: false,
         });
         assert!(inst.is_sandboxed());
     }
@@ -2128,6 +2142,7 @@ mod tests {
             extra_env: Some(vec!["MY_VAR".to_string(), "OTHER_VAR".to_string()]),
             custom_instruction: None,
             dockerfile: None,
+            pull_latest: false,
         };
 
         let json = serde_json::to_string(&info).unwrap();

@@ -69,13 +69,18 @@ impl ContainerRuntimeInterface for ContainerRuntime {
         self.base.ensure_image(image)
     }
 
+    fn ensure_image_pull_latest(&self, image: &str) -> Result<()> {
+        self.base.ensure_image_pull_latest(image)
+    }
+
     fn build_image(
         &self,
         image: &str,
         dockerfile: &std::path::Path,
         context_dir: &std::path::Path,
+        pull: bool,
     ) -> Result<()> {
-        self.base.build_image(image, dockerfile, context_dir)
+        self.base.build_image(image, dockerfile, context_dir, pull)
     }
 
     fn build_image_streamed(
@@ -83,10 +88,11 @@ impl ContainerRuntimeInterface for ContainerRuntime {
         image: &str,
         dockerfile: &std::path::Path,
         context_dir: &std::path::Path,
+        pull: bool,
         progress_tx: &std::sync::mpsc::Sender<crate::session::repo_config::HookProgress>,
     ) -> Result<()> {
         self.base
-            .build_image_streamed(image, dockerfile, context_dir, progress_tx)
+            .build_image_streamed(image, dockerfile, context_dir, pull, progress_tx)
     }
 
     fn default_sandbox_image(&self) -> &'static str {

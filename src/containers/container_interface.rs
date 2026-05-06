@@ -63,11 +63,14 @@ pub trait ContainerRuntimeInterface {
 
     fn ensure_image(&self, image: &str) -> Result<()>;
 
+    fn ensure_image_pull_latest(&self, image: &str) -> Result<()>;
+
     fn build_image(
         &self,
         image: &str,
         dockerfile: &std::path::Path,
         context_dir: &std::path::Path,
+        pull: bool,
     ) -> Result<()>;
 
     fn build_image_streamed(
@@ -75,6 +78,7 @@ pub trait ContainerRuntimeInterface {
         image: &str,
         dockerfile: &std::path::Path,
         context_dir: &std::path::Path,
+        pull: bool,
         progress_tx: &std::sync::mpsc::Sender<crate::session::repo_config::HookProgress>,
     ) -> Result<()>;
 

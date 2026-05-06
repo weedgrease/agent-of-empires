@@ -2263,6 +2263,7 @@ extra_volumes = ["/host/data:/container/data:ro"]
             extra_env: None,
             custom_instruction: None,
             dockerfile: None,
+            pull_latest: false,
         };
 
         let project_path_str = project_dir.path().to_str().unwrap();
@@ -2378,6 +2379,7 @@ extra_volumes = ["/host/personal-only:/container/personal-only:ro"]
             extra_env: None,
             custom_instruction: None,
             dockerfile: None,
+            pull_latest: false,
         };
 
         let has_volume = |config: &crate::containers::container_interface::ContainerConfig,
@@ -2527,6 +2529,7 @@ volume_ignores = ["target", "node_modules"]
             extra_env: None,
             custom_instruction: None,
             dockerfile: None,
+            pull_latest: false,
         };
 
         let project_path_str = worktree_path.to_str().unwrap();
@@ -2619,6 +2622,7 @@ volume_ignores = ["target"]
             extra_env: None,
             custom_instruction: None,
             dockerfile: None,
+            pull_latest: false,
         };
 
         let project_path_str = worktree_path.to_str().unwrap();

@@ -30,6 +30,8 @@ pub struct InstanceParams {
     /// Optional Dockerfile to build the sandbox image from. When set, the
     /// image is built (tagged as `sandbox_image`) instead of pulled.
     pub sandbox_dockerfile: Option<String>,
+    /// Force a fresh pull/rebuild on every container start.
+    pub sandbox_pull_latest: bool,
     pub yolo_mode: bool,
     /// Additional environment entries for the container.
     /// `KEY` = pass through from host, `KEY=VALUE` = set explicitly.
@@ -385,6 +387,7 @@ pub fn build_instance(
             },
             custom_instruction: config.sandbox.custom_instruction.clone(),
             dockerfile: params.sandbox_dockerfile.clone(),
+            pull_latest: params.sandbox_pull_latest,
         });
     }
 

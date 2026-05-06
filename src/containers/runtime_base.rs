@@ -103,12 +103,27 @@ impl RuntimeBase {
     }
 
     pub fn ensure_image(&self, image: &str) -> Result<()> {
-        if self.image_exists_locally(image) {
+        self.ensure_image_inner(image, false)
+    }
+
+    /// Like [`ensure_image`], but force a fresh pull from the registry even
+    /// when the image already exists locally. Wired to the per-session
+    /// "Pull Latest" sandbox-config toggle.
+    pub fn ensure_image_pull_latest(&self, image: &str) -> Result<()> {
+        self.ensure_image_inner(image, true)
+    }
+
+    fn ensure_image_inner(&self, image: &str, force_pull: bool) -> Result<()> {
+        if !force_pull && self.image_exists_locally(image) {
             tracing::info!("Using local {} image '{}'", self.name, image);
             return Ok(());
         }
 
-        tracing::info!("Pulling {} image '{}'", self.name, image);
+        if force_pull {
+            tracing::info!("Pulling {} image '{}' (forced refresh)", self.name, image);
+        } else {
+            tracing::info!("Pulling {} image '{}'", self.name, image);
+        }
         self.pull_image(image)
     }
 
@@ -117,11 +132,13 @@ impl RuntimeBase {
     /// `dockerfile` is the path to the Dockerfile (absolute or relative to
     /// `context_dir`). `context_dir` is the build context (typically the repo
     /// root). Layer caching makes this cheap on no-op rebuilds.
+    /// When `pull` is true, passes `--pull` to refresh the FROM base image.
     pub fn build_image(
         &self,
         image: &str,
         dockerfile: &std::path::Path,
         context_dir: &std::path::Path,
+        pull: bool,
     ) -> Result<()> {
         tracing::info!(
             "Building {} image '{}' from {}",
@@ -131,8 +148,11 @@ impl RuntimeBase {
         );
 
         let mut cmd = self.command();
-        cmd.arg("build")
-            .arg("-t")
+        cmd.arg("build");
+        if pull {
+            cmd.arg("--pull");
+        }
+        cmd.arg("-t")
             .arg(image)
             .arg("-f")
             .arg(dockerfile)
@@ -161,6 +181,7 @@ impl RuntimeBase {
         image: &str,
         dockerfile: &std::path::Path,
         context_dir: &std::path::Path,
+        pull: bool,
         progress_tx: &std::sync::mpsc::Sender<crate::session::repo_config::HookProgress>,
     ) -> Result<()> {
         use crate::session::repo_config::HookProgress;
@@ -179,14 +200,18 @@ impl RuntimeBase {
             dockerfile.display()
         )));
 
-        let mut child = self
-            .command()
-            .arg("build")
-            .arg("-t")
+        let mut cmd = self.command();
+        cmd.arg("build");
+        if pull {
+            cmd.arg("--pull");
+        }
+        cmd.arg("-t")
             .arg(image)
             .arg("-f")
             .arg(dockerfile)
-            .arg(context_dir)
+            .arg(context_dir);
+
+        let mut child = cmd
             .stdout(std::process::Stdio::piped())
             // docker writes its progress UI to stderr; merge so we can show it
             .stderr(std::process::Stdio::piped())
