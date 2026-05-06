@@ -329,7 +329,7 @@ pub async fn run(profile: &str, args: AddArgs) -> Result<()> {
                 .sandbox_image
                 .as_ref()
                 .map(|s| s.trim().to_string())
-                .unwrap_or_else(|| config.sandbox.default_image.clone());
+                .unwrap_or_else(|| config.sandbox.resolved_image_tag(&path));
             instance.sandbox_info = Some(SandboxInfo {
                 enabled: true,
                 container_id: None,

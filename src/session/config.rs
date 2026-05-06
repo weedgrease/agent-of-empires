@@ -530,6 +530,38 @@ pub enum ContainerRuntimeName {
     Docker,
 }
 
+impl SandboxConfig {
+    /// Resolve the image tag a session should use.
+    ///
+    /// When `dockerfile` is set, derive a tag from the project basename so
+    /// users don't have to set both `dockerfile` and `default_image`.
+    /// Otherwise return the configured `default_image`.
+    pub fn resolved_image_tag(&self, project_path: &std::path::Path) -> String {
+        if self.dockerfile.is_some() {
+            let slug = project_path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .map(|s| {
+                    s.to_lowercase()
+                        .chars()
+                        .map(|c| {
+                            if c.is_ascii_alphanumeric() || c == '.' || c == '_' || c == '-' {
+                                c
+                            } else {
+                                '-'
+                            }
+                        })
+                        .collect::<String>()
+                })
+                .filter(|s| !s.is_empty())
+                .unwrap_or_else(|| "sandbox".to_string());
+            format!("aoe-build-{}:latest", slug)
+        } else {
+            self.default_image.clone()
+        }
+    }
+}
+
 impl Default for SandboxConfig {
     fn default() -> Self {
         Self {
@@ -997,6 +1029,39 @@ mod tests {
         assert!(sb.cpu_limit.is_none());
         assert!(sb.memory_limit.is_none());
         assert!(sb.volume_ignores.is_empty());
+    }
+
+    #[test]
+    fn test_resolved_image_tag_no_dockerfile() {
+        let sb = SandboxConfig::default();
+        let path = std::path::Path::new("/tmp/myproject");
+        assert_eq!(sb.resolved_image_tag(path), default_sandbox_image());
+    }
+
+    #[test]
+    fn test_resolved_image_tag_with_dockerfile_derives_slug() {
+        let sb = SandboxConfig {
+            dockerfile: Some(".agent-of-empires/Dockerfile".to_string()),
+            ..Default::default()
+        };
+        let path = std::path::Path::new("/Users/foo/Agent-Of-Empires");
+        assert_eq!(
+            sb.resolved_image_tag(path),
+            "aoe-build-agent-of-empires:latest"
+        );
+    }
+
+    #[test]
+    fn test_resolved_image_tag_sanitizes_invalid_chars() {
+        let sb = SandboxConfig {
+            dockerfile: Some("Dockerfile".to_string()),
+            ..Default::default()
+        };
+        let path = std::path::Path::new("/tmp/my project (v2)");
+        assert_eq!(
+            sb.resolved_image_tag(path),
+            "aoe-build-my-project--v2-:latest"
+        );
     }
 
     #[test]

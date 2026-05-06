@@ -899,7 +899,7 @@ pub const INIT_TEMPLATE: &str = r#"# Agent of Empires - Repository Configuration
 # enabled_by_default = true
 # default_image = "ghcr.io/njbrake/aoe-dev-sandbox:0.10"
 # Build the sandbox image from a local Dockerfile instead of pulling.
-# When set, the image is rebuilt on session start and tagged as default_image.
+# Tag is auto-derived from the repo basename; do not also set default_image.
 # dockerfile = ".agent-of-empires/Dockerfile"
 # List fields below replace (not append to) global settings when set:
 # environment = ["NODE_ENV", "DATABASE_URL"]

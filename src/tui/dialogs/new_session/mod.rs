@@ -268,6 +268,9 @@ fn handle_editable_list_key(
 /// Build label/value pairs for non-default inherited sandbox settings.
 fn build_inherited_settings(sandbox: &SandboxConfig) -> Vec<(String, String)> {
     let mut settings = Vec::new();
+    if let Some(ref df) = sandbox.dockerfile {
+        settings.push(("Dockerfile".to_string(), df.clone()));
+    }
     if sandbox.mount_ssh {
         settings.push(("Mount SSH".to_string(), "yes".to_string()));
     }
@@ -356,6 +359,10 @@ impl NewSessionDialog {
             (Vec::new(), Vec::new())
         };
 
+        let default_sandbox_image_value = config
+            .sandbox
+            .resolved_image_tag(std::path::Path::new(&current_dir));
+
         let profile_index = available_profiles
             .iter()
             .position(|p| p == profile)
@@ -387,7 +394,7 @@ impl NewSessionDialog {
             worktree_config_mode: false,
             worktree_config_focused_field: 0,
             sandbox_enabled,
-            sandbox_image: Input::new(config.sandbox.default_image.clone()),
+            sandbox_image: Input::new(default_sandbox_image_value),
             docker_available,
             yolo_mode,
             yolo_mode_default: yolo_mode,
@@ -549,7 +556,11 @@ impl NewSessionDialog {
             && !self.selected_tool_host_only();
 
         // Reset sandbox image from resolved config (includes profile overrides)
-        self.sandbox_image = Input::new(config.sandbox.default_image.clone());
+        self.sandbox_image = Input::new(
+            config
+                .sandbox
+                .resolved_image_tag(std::path::Path::new(self.path.value())),
+        );
 
         // Reset env entries and inherited settings
         if self.sandbox_enabled {
@@ -595,6 +606,10 @@ impl NewSessionDialog {
             0
         };
 
+        let image_default = config
+            .sandbox
+            .resolved_image_tag(std::path::Path::new(&path));
+
         Self {
             profile: "default".to_string(),
             available_profiles: vec!["default".to_string()],
@@ -621,7 +636,7 @@ impl NewSessionDialog {
             worktree_config_mode: false,
             worktree_config_focused_field: 0,
             sandbox_enabled: false,
-            sandbox_image: Input::new(config.sandbox.default_image.clone()),
+            sandbox_image: Input::new(image_default),
             docker_available: false,
             yolo_mode: false,
             yolo_mode_default: false,
