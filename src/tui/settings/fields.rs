@@ -73,6 +73,7 @@ pub enum FieldKey {
     MountSsh,
     CustomInstruction,
     ContainerRuntime,
+    Dockerfile,
     // Tmux
     StatusBar,
     Mouse,
@@ -636,6 +637,12 @@ fn build_sandbox_fields(
         global.sandbox.container_runtime,
         sb.and_then(|s| s.container_runtime),
     );
+    let (dockerfile, o_df) = resolve_optional(
+        scope,
+        global.sandbox.dockerfile.clone(),
+        sb.and_then(|s| s.dockerfile.clone()),
+        sb.map(|s| s.dockerfile.is_some()).unwrap_or(false),
+    );
 
     let terminal_mode_selected = match default_terminal_mode {
         DefaultTerminalMode::Host => 0,
@@ -820,6 +827,18 @@ fn build_sandbox_fields(
                     selected: global_container_runtime_selected,
                     options: container_runtime_options,
                 },
+            ),
+        },
+        SettingField {
+            key: FieldKey::Dockerfile,
+            label: "Dockerfile",
+            description: "Path to a Dockerfile to build (relative to repo root). When set, builds the image instead of pulling.",
+            value: FieldValue::OptionalText(dockerfile),
+            category: SettingsCategory::Sandbox,
+            has_override: o_df,
+            inherited_display: inherited_if(
+                o_df,
+                FieldValue::OptionalText(global.sandbox.dockerfile.clone()),
             ),
         },
     ]
@@ -1506,6 +1525,9 @@ fn apply_field_to_global(field: &SettingField, config: &mut Config) {
                 _ => ContainerRuntimeName::AppleContainer,
             };
         }
+        (FieldKey::Dockerfile, FieldValue::OptionalText(v)) => {
+            config.sandbox.dockerfile = v.clone();
+        }
         // Tmux
         (FieldKey::StatusBar, FieldValue::Select { selected, .. }) => {
             config.tmux.status_bar = match selected {
@@ -1731,6 +1753,13 @@ fn apply_field_to_profile(field: &SettingField, _global: &Config, config: &mut P
             set_profile_override(runtime, &mut config.sandbox, |s, val| {
                 s.container_runtime = val
             });
+        }
+        (FieldKey::Dockerfile, FieldValue::OptionalText(v)) => {
+            use crate::session::SandboxConfigOverride;
+            let s = config
+                .sandbox
+                .get_or_insert_with(SandboxConfigOverride::default);
+            s.dockerfile = v.clone();
         }
         // Tmux
         (FieldKey::StatusBar, FieldValue::Select { selected, .. }) => {

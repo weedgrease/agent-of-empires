@@ -1075,9 +1075,23 @@ impl Instance {
             return Ok(container);
         }
 
-        // Ensure image is available (always pulls to get latest)
+        // Ensure image is available: build from Dockerfile if configured, else pull.
         let runtime = containers::get_container_runtime();
-        runtime.ensure_image(image)?;
+        let resolved = crate::session::repo_config::resolve_config_with_repo_or_warn(
+            &self.source_profile,
+            Path::new(&self.project_path),
+        );
+        if let Some(ref dockerfile_rel) = resolved.sandbox.dockerfile {
+            let project_root = Path::new(&self.project_path);
+            let dockerfile_path = if Path::new(dockerfile_rel).is_absolute() {
+                std::path::PathBuf::from(dockerfile_rel)
+            } else {
+                project_root.join(dockerfile_rel)
+            };
+            runtime.build_image(image, &dockerfile_path, project_root)?;
+        } else {
+            runtime.ensure_image(image)?;
+        }
 
         let config = self.build_container_config()?;
         let container_id = container.create(&config)?;

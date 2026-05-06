@@ -69,12 +69,21 @@ impl ContainerRuntimeInterface for ContainerRuntime {
         self.base.ensure_image(image)
     }
 
+    fn build_image(
+        &self,
+        image: &str,
+        dockerfile: &std::path::Path,
+        context_dir: &std::path::Path,
+    ) -> Result<()> {
+        self.base.build_image(image, dockerfile, context_dir)
+    }
+
     fn default_sandbox_image(&self) -> &'static str {
         self.base.default_sandbox_image()
     }
 
-    fn effective_default_image(&self) -> String {
-        self.base.effective_default_image()
+    fn effective_default_image(&self, project_path: Option<&std::path::Path>) -> String {
+        self.base.effective_default_image(project_path)
     }
 
     fn does_container_exist(&self, name: &str) -> Result<bool> {

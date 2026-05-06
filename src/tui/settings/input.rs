@@ -711,6 +711,11 @@ impl SettingsView {
                     s.container_runtime = None;
                 }
             }
+            FieldKey::Dockerfile => {
+                if let Some(ref mut s) = config.sandbox {
+                    s.dockerfile = None;
+                }
+            }
             // Sound
             FieldKey::SoundEnabled => {
                 if let Some(ref mut s) = config.sound {

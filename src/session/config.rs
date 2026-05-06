@@ -513,6 +513,12 @@ pub struct SandboxConfig {
     /// Container runtime to use for sandboxing (docker or apple_container)
     #[serde(default)]
     pub container_runtime: ContainerRuntimeName,
+
+    /// Path to a Dockerfile (relative to project root or absolute) to build
+    /// instead of pulling `default_image`. When set, the image is rebuilt on
+    /// session start and tagged as `default_image`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dockerfile: Option<String>,
 }
 
 /// Container runtime options for sandboxing
@@ -540,6 +546,7 @@ impl Default for SandboxConfig {
             mount_ssh: false,
             custom_instruction: None,
             container_runtime: ContainerRuntimeName::default(),
+            dockerfile: None,
         }
     }
 }

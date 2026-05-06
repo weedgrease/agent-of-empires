@@ -595,7 +595,7 @@ fn test_sandbox_image_initialized_with_effective_default() {
     let dialog = multi_tool_dialog();
     assert_eq!(
         dialog.sandbox_image.value(),
-        containers::get_container_runtime().effective_default_image()
+        containers::get_container_runtime().effective_default_image(None)
     );
 }
 
@@ -670,7 +670,7 @@ fn test_submit_with_default_image_passes_through() {
             assert!(data.sandbox);
             assert_eq!(
                 data.sandbox_image,
-                containers::get_container_runtime().effective_default_image()
+                containers::get_container_runtime().effective_default_image(None)
             );
         }
         _ => panic!("Expected Submit"),
@@ -728,7 +728,7 @@ fn test_sandbox_image_input_in_config_mode() {
 
     let expected = format!(
         "{}abc",
-        containers::get_container_runtime().effective_default_image()
+        containers::get_container_runtime().effective_default_image(None)
     );
     assert_eq!(dialog.sandbox_image.value(), expected);
 }

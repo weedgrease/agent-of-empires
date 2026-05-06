@@ -63,9 +63,16 @@ pub trait ContainerRuntimeInterface {
 
     fn ensure_image(&self, image: &str) -> Result<()>;
 
+    fn build_image(
+        &self,
+        image: &str,
+        dockerfile: &std::path::Path,
+        context_dir: &std::path::Path,
+    ) -> Result<()>;
+
     fn default_sandbox_image(&self) -> &'static str;
 
-    fn effective_default_image(&self) -> String;
+    fn effective_default_image(&self, project_path: Option<&std::path::Path>) -> String;
 
     fn image_exists_locally(&self, image: &str) -> bool;
 

@@ -153,6 +153,9 @@ pub struct SandboxConfigOverride {
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub container_runtime: Option<ContainerRuntimeName>,
+
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dockerfile: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -323,6 +326,9 @@ pub fn apply_sandbox_overrides(
     }
     if let Some(container_runtime) = source.container_runtime {
         target.container_runtime = container_runtime;
+    }
+    if let Some(ref dockerfile) = source.dockerfile {
+        target.dockerfile = Some(dockerfile.clone());
     }
 }
 

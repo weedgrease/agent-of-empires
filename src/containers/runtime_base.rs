@@ -112,15 +112,68 @@ impl RuntimeBase {
         self.pull_image(image)
     }
 
+    /// Build an image from a Dockerfile and tag it as `image`.
+    ///
+    /// `dockerfile` is the path to the Dockerfile (absolute or relative to
+    /// `context_dir`). `context_dir` is the build context (typically the repo
+    /// root). Layer caching makes this cheap on no-op rebuilds.
+    pub fn build_image(
+        &self,
+        image: &str,
+        dockerfile: &std::path::Path,
+        context_dir: &std::path::Path,
+    ) -> Result<()> {
+        tracing::info!(
+            "Building {} image '{}' from {}",
+            self.name,
+            image,
+            dockerfile.display()
+        );
+
+        let mut cmd = self.command();
+        cmd.arg("build")
+            .arg("-t")
+            .arg(image)
+            .arg("-f")
+            .arg(dockerfile)
+            .arg(context_dir);
+
+        let output = cmd.output()?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(DockerError::CommandFailed(format!(
+                "Failed to build image '{}' from {}: {}",
+                image,
+                dockerfile.display(),
+                stderr.trim()
+            )));
+        }
+
+        Ok(())
+    }
+
     pub fn default_sandbox_image(&self) -> &'static str {
         "ghcr.io/njbrake/aoe-sandbox:latest"
     }
 
-    pub fn effective_default_image(&self) -> String {
-        crate::session::Config::load()
-            .ok()
-            .map(|c| c.sandbox.default_image)
-            .unwrap_or_else(|| self.default_sandbox_image().to_string())
+    pub fn effective_default_image(&self, project_path: Option<&std::path::Path>) -> String {
+        let global = match crate::session::Config::load() {
+            Ok(c) => c,
+            Err(_) => return self.default_sandbox_image().to_string(),
+        };
+
+        match project_path {
+            Some(path) => match crate::session::repo_config::load_repo_config(path) {
+                Ok(Some(repo)) => {
+                    crate::session::repo_config::merge_repo_config(global, &repo)
+                        .sandbox
+                        .default_image
+                }
+                _ => global.sandbox.default_image,
+            },
+            None => global.sandbox.default_image,
+        }
     }
 
     pub fn build_create_args(

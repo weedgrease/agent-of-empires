@@ -898,6 +898,9 @@ pub const INIT_TEMPLATE: &str = r#"# Agent of Empires - Repository Configuration
 # [sandbox]
 # enabled_by_default = true
 # default_image = "ghcr.io/njbrake/aoe-dev-sandbox:0.10"
+# Build the sandbox image from a local Dockerfile instead of pulling.
+# When set, the image is rebuilt on session start and tagged as default_image.
+# dockerfile = ".agent-of-empires/Dockerfile"
 # List fields below replace (not append to) global settings when set:
 # environment = ["NODE_ENV", "DATABASE_URL"]
 # volume_ignores = ["node_modules", ".next"]
@@ -1166,6 +1169,40 @@ mod tests {
         let merged = merge_repo_config(config, &repo);
         assert!(merged.worktree.enabled);
         assert_eq!(merged.worktree.path_template, "../wt/{branch}");
+    }
+
+    #[test]
+    fn test_merge_repo_config_dockerfile() {
+        let config = Config::default();
+        let repo = RepoConfig {
+            sandbox: Some(SandboxConfigOverride {
+                dockerfile: Some(".agent-of-empires/Dockerfile".to_string()),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let merged = merge_repo_config(config, &repo);
+        assert_eq!(
+            merged.sandbox.dockerfile.as_deref(),
+            Some(".agent-of-empires/Dockerfile")
+        );
+    }
+
+    #[test]
+    fn test_merge_repo_config_default_image_overrides_global() {
+        // Regression: repo-level default_image must be honored, not silently
+        // ignored in favor of the global config.
+        let mut config = Config::default();
+        config.sandbox.default_image = "global:latest".to_string();
+        let repo = RepoConfig {
+            sandbox: Some(SandboxConfigOverride {
+                default_image: Some("repo:dev".to_string()),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let merged = merge_repo_config(config, &repo);
+        assert_eq!(merged.sandbox.default_image, "repo:dev");
     }
 
     #[test]
