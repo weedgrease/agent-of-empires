@@ -90,6 +90,9 @@ pub struct NewSessionData {
     pub sandbox: bool,
     /// The sandbox image to use (always populated from the input field).
     pub sandbox_image: String,
+    /// Path to a Dockerfile when the dialog is in dockerfile mode (Some) — the
+    /// sandbox image will be built from it instead of pulled. None means image mode.
+    pub sandbox_dockerfile: Option<String>,
     pub yolo_mode: bool,
     /// Additional environment entries for the container.
     /// `KEY` = pass through from host, `KEY=VALUE` = set explicitly.
@@ -114,6 +117,10 @@ pub struct NewSessionDialog {
     pub(super) create_new_branch: bool,
     pub(super) sandbox_enabled: bool,
     pub(super) sandbox_image: Input,
+    /// When `Some`, the modal is in dockerfile mode and this Input edits the
+    /// dockerfile path. When `None`, it's in image mode (edit `sandbox_image`).
+    /// 't' on the modal's image field toggles between the two.
+    pub(super) sandbox_dockerfile: Option<Input>,
     pub(super) docker_available: bool,
     pub(super) yolo_mode: bool,
     pub(super) yolo_mode_default: bool,
@@ -268,9 +275,6 @@ fn handle_editable_list_key(
 /// Build label/value pairs for non-default inherited sandbox settings.
 fn build_inherited_settings(sandbox: &SandboxConfig) -> Vec<(String, String)> {
     let mut settings = Vec::new();
-    if let Some(ref df) = sandbox.dockerfile {
-        settings.push(("Dockerfile".to_string(), df.clone()));
-    }
     if sandbox.mount_ssh {
         settings.push(("Mount SSH".to_string(), "yes".to_string()));
     }
@@ -362,6 +366,7 @@ impl NewSessionDialog {
         let default_sandbox_image_value = config
             .sandbox
             .resolved_image_tag(std::path::Path::new(&current_dir));
+        let initial_sandbox_dockerfile = config.sandbox.dockerfile.clone().map(Input::new);
 
         let profile_index = available_profiles
             .iter()
@@ -395,6 +400,7 @@ impl NewSessionDialog {
             worktree_config_focused_field: 0,
             sandbox_enabled,
             sandbox_image: Input::new(default_sandbox_image_value),
+            sandbox_dockerfile: initial_sandbox_dockerfile,
             docker_available,
             yolo_mode,
             yolo_mode_default: yolo_mode,
@@ -561,6 +567,7 @@ impl NewSessionDialog {
                 .sandbox
                 .resolved_image_tag(std::path::Path::new(self.path.value())),
         );
+        self.sandbox_dockerfile = config.sandbox.dockerfile.clone().map(Input::new);
 
         // Reset env entries and inherited settings
         if self.sandbox_enabled {
@@ -637,6 +644,7 @@ impl NewSessionDialog {
             worktree_config_focused_field: 0,
             sandbox_enabled: false,
             sandbox_image: Input::new(image_default),
+            sandbox_dockerfile: config.sandbox.dockerfile.clone().map(Input::new),
             docker_available: false,
             yolo_mode: false,
             yolo_mode_default: false,
@@ -696,6 +704,7 @@ impl NewSessionDialog {
             sandbox_image: Input::new(
                 containers::get_container_runtime().effective_default_image(None),
             ),
+            sandbox_dockerfile: None,
             docker_available: false,
             yolo_mode: false,
             yolo_mode_default: false,
@@ -1070,11 +1079,25 @@ impl NewSessionDialog {
                 };
                 DialogResult::Continue
             }
+            // 't' on the image/dockerfile field toggles between the two modes.
+            KeyCode::Char('t') if self.sandbox_focused_field == SANDBOX_IMAGE => {
+                if self.sandbox_dockerfile.is_some() {
+                    self.sandbox_dockerfile = None;
+                } else {
+                    self.sandbox_dockerfile =
+                        Some(Input::new(".agent-of-empires/Dockerfile".to_string()));
+                }
+                DialogResult::Continue
+            }
             _ => {
-                // Text input for image field only
+                // Text input for image field (image mode) or dockerfile field (dockerfile mode)
                 if self.sandbox_focused_field == SANDBOX_IMAGE {
-                    self.sandbox_image
-                        .handle_event(&crossterm::event::Event::Key(key));
+                    if let Some(ref mut df) = self.sandbox_dockerfile {
+                        df.handle_event(&crossterm::event::Event::Key(key));
+                    } else {
+                        self.sandbox_image
+                            .handle_event(&crossterm::event::Event::Key(key));
+                    }
                 }
                 DialogResult::Continue
             }
@@ -1449,7 +1472,25 @@ impl NewSessionDialog {
                 Vec::new()
             },
             sandbox: self.sandbox_enabled,
-            sandbox_image: self.sandbox_image.value().trim().to_string(),
+            sandbox_image: {
+                // Dockerfile mode: derive a deterministic tag from the project
+                // path so the user doesn't have to think about it.
+                if self.sandbox_dockerfile.is_some() {
+                    let path = self.path.value().trim();
+                    let cfg = crate::session::config::SandboxConfig {
+                        dockerfile: Some("placeholder".to_string()),
+                        ..Default::default()
+                    };
+                    cfg.resolved_image_tag(std::path::Path::new(path))
+                } else {
+                    self.sandbox_image.value().trim().to_string()
+                }
+            },
+            sandbox_dockerfile: self
+                .sandbox_dockerfile
+                .as_ref()
+                .map(|i| i.value().trim().to_string())
+                .filter(|s| !s.is_empty()),
             yolo_mode: self.yolo_mode || self.selected_tool_always_yolo(),
             extra_env: if self.sandbox_enabled {
                 self.extra_env.clone()

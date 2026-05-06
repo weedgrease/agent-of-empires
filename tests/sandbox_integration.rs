@@ -22,6 +22,7 @@ fn test_sandbox_info_serialization() {
         container_name: "aoe-sandbox-test1234".to_string(),
         extra_env: Some(vec!["MY_VAR".to_string()]),
         custom_instruction: None,
+        dockerfile: None,
     };
 
     let json = serde_json::to_string(&sandbox_info).unwrap();
@@ -46,6 +47,7 @@ fn test_instance_is_sandboxed() {
         container_name: "aoe-sandbox-test".to_string(),
         extra_env: None,
         custom_instruction: None,
+        dockerfile: None,
     });
     assert!(inst.is_sandboxed());
 
@@ -56,6 +58,7 @@ fn test_instance_is_sandboxed() {
         container_name: "aoe-sandbox-test".to_string(),
         extra_env: None,
         custom_instruction: None,
+        dockerfile: None,
     });
     assert!(!inst.is_sandboxed());
 }
@@ -75,6 +78,7 @@ fn test_sandbox_info_persists_across_save_load() {
         container_name: "aoe-sandbox-abcd1234".to_string(),
         extra_env: Some(vec!["API_KEY".to_string(), "SECRET=my_secret".to_string()]),
         custom_instruction: None,
+        dockerfile: None,
     });
 
     storage.save(&[inst.clone()]).unwrap();

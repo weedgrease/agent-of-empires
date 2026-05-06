@@ -70,6 +70,14 @@ pub trait ContainerRuntimeInterface {
         context_dir: &std::path::Path,
     ) -> Result<()>;
 
+    fn build_image_streamed(
+        &self,
+        image: &str,
+        dockerfile: &std::path::Path,
+        context_dir: &std::path::Path,
+        progress_tx: &std::sync::mpsc::Sender<crate::session::repo_config::HookProgress>,
+    ) -> Result<()>;
+
     fn default_sandbox_image(&self) -> &'static str;
 
     fn effective_default_image(&self, project_path: Option<&std::path::Path>) -> String;

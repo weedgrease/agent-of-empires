@@ -648,16 +648,30 @@ impl NewSessionDialog {
 
         let mut ci = 0;
 
-        // Image field
-        render_text_field(
-            frame,
-            chunks[ci],
-            "Image:",
-            &self.sandbox_image,
-            self.sandbox_focused_field == 0,
-            None,
-            theme,
-        );
+        // Image / Dockerfile field. When `sandbox_dockerfile` is Some, the
+        // modal is in dockerfile mode and edits the Dockerfile path; the image
+        // tag is auto-derived. Press 't' to toggle modes.
+        if let Some(ref df) = self.sandbox_dockerfile {
+            render_text_field(
+                frame,
+                chunks[ci],
+                "Dockerfile:",
+                df,
+                self.sandbox_focused_field == 0,
+                None,
+                theme,
+            );
+        } else {
+            render_text_field(
+                frame,
+                chunks[ci],
+                "Image:",
+                &self.sandbox_image,
+                self.sandbox_focused_field == 0,
+                None,
+                theme,
+            );
+        }
         ci += 1;
 
         // Environment
@@ -674,6 +688,8 @@ impl NewSessionDialog {
             Span::raw(" next  "),
             Span::styled("Enter", Style::default().fg(theme.hint)),
             Span::raw(" edit  "),
+            Span::styled("t", Style::default().fg(theme.hint)),
+            Span::raw(" image/dockerfile  "),
             Span::styled("Esc", Style::default().fg(theme.hint)),
             Span::raw(" back"),
         ];

@@ -27,6 +27,9 @@ pub struct InstanceParams {
     pub sandbox: bool,
     /// The sandbox image to use. Required when sandbox is true.
     pub sandbox_image: String,
+    /// Optional Dockerfile to build the sandbox image from. When set, the
+    /// image is built (tagged as `sandbox_image`) instead of pulled.
+    pub sandbox_dockerfile: Option<String>,
     pub yolo_mode: bool,
     /// Additional environment entries for the container.
     /// `KEY` = pass through from host, `KEY=VALUE` = set explicitly.
@@ -381,6 +384,7 @@ pub fn build_instance(
                 Some(params.extra_env.clone())
             },
             custom_instruction: config.sandbox.custom_instruction.clone(),
+            dockerfile: params.sandbox_dockerfile.clone(),
         });
     }
 

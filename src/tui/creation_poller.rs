@@ -109,6 +109,7 @@ impl CreationPoller {
             create_new_branch: data.create_new_branch,
             sandbox: data.sandbox,
             sandbox_image: data.sandbox_image,
+            sandbox_dockerfile: data.sandbox_dockerfile,
             yolo_mode: data.yolo_mode,
             extra_env: data.extra_env,
             extra_args: data.extra_args,
@@ -142,7 +143,7 @@ impl CreationPoller {
                 // Ensure the container is running so we can exec hooks inside it.
                 // Don't create the tmux session yet -- that happens at attach time
                 // where the terminal size is available.
-                if let Err(e) = instance.get_container_for_instance() {
+                if let Err(e) = instance.ensure_container_with_progress(progress_tx) {
                     builder::cleanup_instance(
                         &instance,
                         created_worktree.as_ref(),
@@ -183,7 +184,7 @@ impl CreationPoller {
             let hooks = hooks.as_ref().unwrap();
             if data.sandbox {
                 if !container_started {
-                    if let Err(e) = instance.get_container_for_instance() {
+                    if let Err(e) = instance.ensure_container_with_progress(progress_tx) {
                         let msg = format!("Container startup warning: {:#}", e);
                         tracing::warn!("{}", msg);
                         let _ = progress_tx.send(HookProgress::Output(msg));
@@ -217,7 +218,7 @@ impl CreationPoller {
             // Only ensure the container is running here if hooks didn't already
             // start it. Don't create the tmux session yet -- that happens at attach time
             // where the terminal size is available.
-            if let Err(e) = instance.get_container_for_instance() {
+            if let Err(e) = instance.ensure_container_with_progress(progress_tx) {
                 builder::cleanup_instance(
                     &instance,
                     created_worktree.as_ref(),

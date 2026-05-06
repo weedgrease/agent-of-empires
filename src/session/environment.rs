@@ -460,6 +460,7 @@ environment = ["GH_TOKEN=write_token"]
             container_name: "test".to_string(),
             extra_env: None,
             custom_instruction: None,
+            dockerfile: None,
         };
         let project_path = temp_home.path().join("nonexistent_project");
 
@@ -623,6 +624,7 @@ environment = ["GH_TOKEN=write_token"]
             container_name: "test".to_string(),
             extra_env: None,
             custom_instruction: None,
+            dockerfile: None,
         };
 
         let result = collect_environment(&config, &info);
@@ -645,6 +647,7 @@ environment = ["GH_TOKEN=write_token"]
             container_name: "test".to_string(),
             extra_env: None,
             custom_instruction: None,
+            dockerfile: None,
         };
 
         let result = collect_environment(&config, &info);
@@ -664,6 +667,7 @@ environment = ["GH_TOKEN=write_token"]
             container_name: "test".to_string(),
             extra_env: Some(vec!["AOE_TEST_EXTRA".to_string(), "FOO=bar".to_string()]),
             custom_instruction: None,
+            dockerfile: None,
         };
 
         let result = collect_environment(&config, &info);
@@ -689,6 +693,7 @@ environment = ["GH_TOKEN=write_token"]
             container_name: "test".to_string(),
             extra_env: Some(vec!["DUP_KEY=from_session".to_string()]),
             custom_instruction: None,
+            dockerfile: None,
         };
 
         let result = collect_environment(&config, &info);
@@ -710,6 +715,7 @@ environment = ["GH_TOKEN=write_token"]
             container_name: "test".to_string(),
             extra_env: None,
             custom_instruction: None,
+            dockerfile: None,
         };
 
         let result = collect_environment(&config, &info);
@@ -731,6 +737,7 @@ environment = ["GH_TOKEN=write_token"]
             container_name: "test".to_string(),
             extra_env: None,
             custom_instruction: None,
+            dockerfile: None,
         };
 
         let result = collect_environment(&config, &info);
@@ -753,6 +760,7 @@ environment = ["GH_TOKEN=write_token"]
             container_name: "test".to_string(),
             extra_env: None,
             custom_instruction: None,
+            dockerfile: None,
         };
 
         let result = collect_environment(&config, &info);
@@ -813,6 +821,7 @@ environment = ["GH_TOKEN=write_token"]
             container_name: "test".to_string(),
             extra_env: Some(vec!["AOE_TEST_TOKEN=$AOE_TEST_TOKEN".to_string()]),
             custom_instruction: None,
+            dockerfile: None,
         };
         let result = build_docker_env_args("", &sandbox, std::path::Path::new("/nonexistent"));
         // docker_args should have the key but NOT the secret value
@@ -848,6 +857,7 @@ environment = ["GH_TOKEN=write_token"]
             container_name: "test".to_string(),
             extra_env: Some(vec!["MY_MAPPED=$AOE_TEST_SOURCE".to_string()]),
             custom_instruction: None,
+            dockerfile: None,
         };
         let result = build_docker_env_args("", &sandbox, std::path::Path::new("/nonexistent"));
         assert!(
@@ -883,6 +893,7 @@ environment = ["GH_TOKEN=write_token"]
             container_name: "test".to_string(),
             extra_env: Some(vec!["AOE_TEST_BARE".to_string()]),
             custom_instruction: None,
+            dockerfile: None,
         };
         let result = build_docker_env_args("", &sandbox, std::path::Path::new("/nonexistent"));
         assert!(
@@ -917,6 +928,7 @@ environment = ["GH_TOKEN=write_token"]
             container_name: "test".to_string(),
             extra_env: Some(vec!["MY_LITERAL=some_value".to_string()]),
             custom_instruction: None,
+            dockerfile: None,
         };
         let result = build_docker_env_args("", &sandbox, std::path::Path::new("/nonexistent"));
         assert!(
@@ -950,6 +962,7 @@ environment = ["GH_TOKEN=write_token"]
                 "MY_LITERAL=public_val".to_string(),
             ]),
             custom_instruction: None,
+            dockerfile: None,
         };
         let result = build_docker_env_args("", &sandbox, std::path::Path::new("/nonexistent"));
         // Secret: key only in docker_args, value in exports

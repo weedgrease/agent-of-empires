@@ -110,6 +110,10 @@ pub struct SandboxInfo {
     /// Custom instruction text to inject into agent launch command
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub custom_instruction: Option<String>,
+    /// Path to a Dockerfile for building the sandbox image. When set, the
+    /// image is built and tagged as `image` on session start instead of pulled.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dockerfile: Option<String>,
 }
 
 /// Deserialize agent_session_id, treating empty/whitespace strings as None.
@@ -1056,13 +1060,31 @@ impl Instance {
     }
 
     pub fn get_container_for_instance(&mut self) -> Result<containers::DockerContainer> {
+        self.ensure_container(None)
+    }
+
+    /// Like [`get_container_for_instance`] but streams docker build output
+    /// (and a "Building image..." status line) to the given progress channel,
+    /// so the TUI session-creation overlay can render visible build progress
+    /// instead of an opaque spinner.
+    pub fn ensure_container_with_progress(
+        &mut self,
+        progress_tx: &std::sync::mpsc::Sender<crate::session::repo_config::HookProgress>,
+    ) -> Result<containers::DockerContainer> {
+        self.ensure_container(Some(progress_tx))
+    }
+
+    fn ensure_container(
+        &mut self,
+        progress_tx: Option<&std::sync::mpsc::Sender<crate::session::repo_config::HookProgress>>,
+    ) -> Result<containers::DockerContainer> {
         let sandbox = self
             .sandbox_info
             .as_ref()
             .ok_or_else(|| anyhow::anyhow!("Cannot ensure container for non-sandboxed session"))?;
 
-        let image = &sandbox.image;
-        let container = DockerContainer::new(&self.id, image);
+        let image = sandbox.image.clone();
+        let container = DockerContainer::new(&self.id, &image);
 
         if container.is_running()? {
             container_config::refresh_agent_configs();
@@ -1075,22 +1097,33 @@ impl Instance {
             return Ok(container);
         }
 
-        // Ensure image is available: build from Dockerfile if configured, else pull.
+        // Ensure image is available: build from Dockerfile if configured for
+        // this session, else pull. The per-session dockerfile lives on
+        // SandboxInfo and was captured at session creation; the resolved
+        // config is consulted only as a backwards-compat fallback.
         let runtime = containers::get_container_runtime();
-        let resolved = crate::session::repo_config::resolve_config_with_repo_or_warn(
-            &self.source_profile,
-            Path::new(&self.project_path),
-        );
-        if let Some(ref dockerfile_rel) = resolved.sandbox.dockerfile {
+        let dockerfile_choice = sandbox.dockerfile.clone().or_else(|| {
+            let resolved = crate::session::repo_config::resolve_config_with_repo_or_warn(
+                &self.source_profile,
+                Path::new(&self.project_path),
+            );
+            resolved.sandbox.dockerfile
+        });
+        if let Some(dockerfile_rel) = dockerfile_choice {
             let project_root = Path::new(&self.project_path);
-            let dockerfile_path = if Path::new(dockerfile_rel).is_absolute() {
-                std::path::PathBuf::from(dockerfile_rel)
+            let dockerfile_path = if Path::new(&dockerfile_rel).is_absolute() {
+                std::path::PathBuf::from(&dockerfile_rel)
             } else {
-                project_root.join(dockerfile_rel)
+                project_root.join(&dockerfile_rel)
             };
-            runtime.build_image(image, &dockerfile_path, project_root)?;
+            match progress_tx {
+                Some(tx) => {
+                    runtime.build_image_streamed(&image, &dockerfile_path, project_root, tx)?
+                }
+                None => runtime.build_image(&image, &dockerfile_path, project_root)?,
+            }
         } else {
-            runtime.ensure_image(image)?;
+            runtime.ensure_image(&image)?;
         }
 
         let config = self.build_container_config()?;
@@ -1974,6 +2007,7 @@ mod tests {
             container_name: "test".to_string(),
             extra_env: None,
             custom_instruction: None,
+            dockerfile: None,
         });
         assert!(!inst.is_sandboxed());
     }
@@ -1988,6 +2022,7 @@ mod tests {
             container_name: "test".to_string(),
             extra_env: None,
             custom_instruction: None,
+            dockerfile: None,
         });
         assert!(inst.is_sandboxed());
     }
@@ -2092,6 +2127,7 @@ mod tests {
             container_name: "test_container".to_string(),
             extra_env: Some(vec!["MY_VAR".to_string(), "OTHER_VAR".to_string()]),
             custom_instruction: None,
+            dockerfile: None,
         };
 
         let json = serde_json::to_string(&info).unwrap();

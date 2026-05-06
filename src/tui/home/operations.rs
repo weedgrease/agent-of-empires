@@ -29,6 +29,7 @@ impl HomeView {
             create_new_branch: data.create_new_branch,
             sandbox: data.sandbox,
             sandbox_image: data.sandbox_image,
+            sandbox_dockerfile: data.sandbox_dockerfile,
             yolo_mode: data.yolo_mode,
             extra_env: data.extra_env,
             extra_args: data.extra_args,

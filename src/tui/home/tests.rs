@@ -959,6 +959,7 @@ fn create_test_env_with_group_sessions() -> TestEnv {
         container_name: "test-container".to_string(),
         extra_env: None,
         custom_instruction: None,
+        dockerfile: None,
     });
     instances.push(inst3);
 
@@ -1031,6 +1032,7 @@ fn test_group_has_containers() {
         container_name: "test-container".to_string(),
         extra_env: None,
         custom_instruction: None,
+        dockerfile: None,
     });
 
     let mut inst2 = Instance::new("other-session", "/tmp/other");
@@ -1223,6 +1225,7 @@ fn test_delete_group_with_sessions_respects_container_option() {
         container_name: "test-container".to_string(),
         extra_env: None,
         custom_instruction: None,
+        dockerfile: None,
     });
 
     storage.save(&[inst1]).unwrap();
@@ -1861,6 +1864,7 @@ fn test_create_session_in_all_mode_is_findable() {
         extra_repo_paths: Vec::new(),
         sandbox: false,
         sandbox_image: String::new(),
+        sandbox_dockerfile: None,
         yolo_mode: false,
         extra_env: Vec::new(),
         extra_args: String::new(),
@@ -2521,6 +2525,7 @@ fn test_apply_creation_results_returns_session_id() {
         extra_repo_paths: Vec::new(),
         sandbox: false,
         sandbox_image: String::new(),
+        sandbox_dockerfile: None,
         yolo_mode: false,
         extra_env: Vec::new(),
         extra_args: String::new(),

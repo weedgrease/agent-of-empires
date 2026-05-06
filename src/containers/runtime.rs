@@ -78,6 +78,17 @@ impl ContainerRuntimeInterface for ContainerRuntime {
         self.base.build_image(image, dockerfile, context_dir)
     }
 
+    fn build_image_streamed(
+        &self,
+        image: &str,
+        dockerfile: &std::path::Path,
+        context_dir: &std::path::Path,
+        progress_tx: &std::sync::mpsc::Sender<crate::session::repo_config::HookProgress>,
+    ) -> Result<()> {
+        self.base
+            .build_image_streamed(image, dockerfile, context_dir, progress_tx)
+    }
+
     fn default_sandbox_image(&self) -> &'static str {
         self.base.default_sandbox_image()
     }

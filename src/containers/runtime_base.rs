@@ -153,6 +153,80 @@ impl RuntimeBase {
         Ok(())
     }
 
+    /// Like [`build_image`], but streams docker build output to a progress
+    /// channel as it runs. Used by the TUI session-creation flow so users can
+    /// see build progress instead of an opaque "Creating..." spinner.
+    pub fn build_image_streamed(
+        &self,
+        image: &str,
+        dockerfile: &std::path::Path,
+        context_dir: &std::path::Path,
+        progress_tx: &std::sync::mpsc::Sender<crate::session::repo_config::HookProgress>,
+    ) -> Result<()> {
+        use crate::session::repo_config::HookProgress;
+        use std::io::BufRead;
+
+        tracing::info!(
+            "Building {} image '{}' from {} (streamed)",
+            self.name,
+            image,
+            dockerfile.display()
+        );
+
+        let _ = progress_tx.send(HookProgress::Started(format!(
+            "Building image '{}' from {}",
+            image,
+            dockerfile.display()
+        )));
+
+        let mut child = self
+            .command()
+            .arg("build")
+            .arg("-t")
+            .arg(image)
+            .arg("-f")
+            .arg(dockerfile)
+            .arg(context_dir)
+            .stdout(std::process::Stdio::piped())
+            // docker writes its progress UI to stderr; merge so we can show it
+            .stderr(std::process::Stdio::piped())
+            .spawn()?;
+
+        if let Some(stdout) = child.stdout.take() {
+            let tx = progress_tx.clone();
+            std::thread::spawn(move || {
+                for line in std::io::BufReader::new(stdout)
+                    .lines()
+                    .map_while(std::result::Result::ok)
+                {
+                    let _ = tx.send(HookProgress::Output(line));
+                }
+            });
+        }
+        if let Some(stderr) = child.stderr.take() {
+            let tx = progress_tx.clone();
+            std::thread::spawn(move || {
+                for line in std::io::BufReader::new(stderr)
+                    .lines()
+                    .map_while(std::result::Result::ok)
+                {
+                    let _ = tx.send(HookProgress::Output(line));
+                }
+            });
+        }
+
+        let status = child.wait()?;
+        if !status.success() {
+            return Err(DockerError::CommandFailed(format!(
+                "docker build for '{}' exited with code {}",
+                image,
+                status.code().unwrap_or(-1)
+            )));
+        }
+
+        Ok(())
+    }
+
     pub fn default_sandbox_image(&self) -> &'static str {
         "ghcr.io/njbrake/aoe-sandbox:latest"
     }

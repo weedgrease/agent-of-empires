@@ -337,6 +337,7 @@ pub async fn run(profile: &str, args: AddArgs) -> Result<()> {
                 container_name,
                 extra_env: None,
                 custom_instruction: config.sandbox.custom_instruction.clone(),
+                dockerfile: config.sandbox.dockerfile.clone(),
             });
         }
     }
