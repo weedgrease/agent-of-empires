@@ -624,6 +624,7 @@ pub async fn create_session(
             create_new_branch: body.create_new_branch,
             sandbox: body.sandbox,
             sandbox_image,
+            sandbox_dockerfile: None,
             yolo_mode: body.yolo_mode,
             extra_env: body.extra_env,
             extra_args: body.extra_args,
