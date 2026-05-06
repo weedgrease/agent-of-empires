@@ -710,17 +710,20 @@ impl NewSessionDialog {
         self.render_inherited_field(frame, chunks[ci], theme);
         ci += 1;
 
-        // Hints
-        let hint_spans = vec![
+        // Hints. The image/dockerfile toggle only applies on field 0, so
+        // surface its hint only when that field is focused.
+        let mut hint_spans = vec![
             Span::styled("Tab", Style::default().fg(theme.hint)),
             Span::raw(" next  "),
             Span::styled("Enter", Style::default().fg(theme.hint)),
             Span::raw(" edit/toggle  "),
-            Span::styled("t", Style::default().fg(theme.hint)),
-            Span::raw(" image/dockerfile  "),
-            Span::styled("Esc", Style::default().fg(theme.hint)),
-            Span::raw(" back"),
         ];
+        if self.sandbox_focused_field == 0 {
+            hint_spans.push(Span::styled("t", Style::default().fg(theme.hint)));
+            hint_spans.push(Span::raw(" image/dockerfile  "));
+        }
+        hint_spans.push(Span::styled("Esc", Style::default().fg(theme.hint)));
+        hint_spans.push(Span::raw(" back"));
         frame.render_widget(Paragraph::new(Line::from(hint_spans)), chunks[ci]);
 
         if self.show_help {
